@@ -1,0 +1,13 @@
+runtime: python27
+api_version: 1
+threadsafe: yes
+
+handlers:
+- url: .*
+  script: bot.app
+
+libraries:
+- name: yaml
+  version: "0.12"
+- name: ssl
+  version: latest
