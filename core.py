@@ -1,17 +1,29 @@
 import logging
-import requests
+from google.appengine.api import urlfetch
+from google.appengine.ext import ndb
+
+class User(ndb.Model):
+    chat_id = ndb.StringProperty()
+    status = ndb.IntegerProperty()
+    
 
 
-def send_unlock_cmd(lock_ip, lock_port, lock_code):
+def send_unlock_cmd(lock_host, lock_port, lock_code):
+    logging.debug("Sending unlock request to %s %s", lock_host, lock_port)
     logging.info("Unlocking...")
-    response = requests.get("http://" + lock_ip + ":" + str(lock_port) + "/unlock?code=" + lock_code)
-    if response.status_code == 200:
-        logging.info("Unlock successful!")
-        return True
-    else:
-        logging.info("Unlock failed!")
-        return False
+    url = "http://" + lock_host + ":" + lock_port + "/unlock?code=" + lock_code
+    try:
+        result = urlfetch.fetch(url)
+        if result.status_code == 200:
+            logging.info("Unlock successful!")
+            return True
+        else:
+            logging.info("Unlock failed!")
+            return False
+    except urlfetch.Error:
+        logging.exception('Caught exception fetching url')
 
+    return False
 
 # def handle_bot_msg(msg):
 #     chat_id = msg['chat']['id']
