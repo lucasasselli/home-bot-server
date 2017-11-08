@@ -7,7 +7,7 @@ STATUS_AUTH = 0
 
 
 class User(ndb.Model):
-    chat_id = ndb.StringProperty()
+    chat_id = ndb.IntegerProperty()
     status = ndb.IntegerProperty()
 
 
