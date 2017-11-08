@@ -9,7 +9,6 @@ vendor.add('lib')
 
 import telegram
 from flask import Flask, request
-import core
 import logging
 from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
@@ -17,14 +16,14 @@ from google.appengine.ext import ndb
 # Constants
 RESPONSE_OK = "OK"
 RESPONSE_FAIL = "FAIL"
-STATUS_PENDING = 1
 STATUS_AUTH = 0
+STATUS_PENDING = 1
+STATUS_NEW = 2
 
 
 class User(ndb.Model):
     chat_id = ndb.IntegerProperty()
     status = ndb.IntegerProperty()
-
 
 def get_user(chat_id):
     query = User.query(User.chat_id == chat_id)
@@ -51,7 +50,7 @@ def get_user(chat_id):
     else:
         # Create new user
         logging.info("Added new user with chat_id %s to datastore", chat_id)
-        user = User(chat_id=chat_id, status=STATUS_PENDING)
+        user = User(chat_id=chat_id, status=STATUS_NEW)
         user.put()
 
         return user
@@ -89,10 +88,10 @@ def handle_bot_msg(chat_id, command):
                                             app.config['LOCK_PORT'],
                                             app.config['LOCK_AUTHKEY'])
             # Check result
-            if unlock_result:
-                bot.sendMessage(chat_id, "Door is unlocked!")
-            else:
-                bot.sendMessage(chat_id, "Unlock failed!")
+            # if unlock_result:
+            #     bot.sendMessage(chat_id, "Door is unlocked!")
+            # else:
+            #     bot.sendMessage(chat_id, "Unlock failed!")
         elif command == "/logout":
             # User logout
             user.key.delete()
