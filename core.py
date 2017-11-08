@@ -2,10 +2,36 @@ import logging
 from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
 
+STATUS_PENDING = 1
+STATUS_AUTH = 0
+
+
 class User(ndb.Model):
     chat_id = ndb.StringProperty()
     status = ndb.IntegerProperty()
-    
+
+
+def get_user(chat_id):
+    query = User.query(User.chat_id == chat_id)
+
+    query_list = list(query.fetch())
+
+    if (len(query_list) == 1):
+        # Old user
+        logging.debug("User with chat_id %s found in data store", chat_id)
+        return query_list[0]
+    elif (len(query_list) > 1):
+        # Query error
+        logging.error("Multiple users for chat_id %s", chat_id)
+        # TODO Purge
+        return None
+    else:
+        # New user
+        logging.info("Added new user with chat_id %s to datastore", chat_id)
+        user = User(chat_id=chat_id, status=STATUS_PENDING)
+        user.put()
+
+        return user
 
 
 def send_unlock_cmd(lock_host, lock_port, lock_code):

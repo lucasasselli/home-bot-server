@@ -18,6 +18,7 @@ app.config.from_pyfile('bot.cfg', silent=True)
 global bot
 bot = telegram.Bot(token=app.config['BOT_TOKEN'])
 
+
 @app.route(app.config['BOT_HOOK'], methods=['POST'])
 def webhook_handler():
     if request.method == "POST":
@@ -31,10 +32,11 @@ def webhook_handler():
 
         logging.debug("Message from %s: %s", chat_id, text)
 
+        user = core.get_user(chat_id)
         if (text == "/unlock"):
             core.send_unlock_cmd(app.config['LOCK_HOST'],
-                    app.config['LOCK_PORT'],
-                    app.config['LOCK_AUTHKEY'])
+                                 app.config['LOCK_PORT'],
+                                 app.config['LOCK_AUTHKEY'])
             return "OK!"
 
 
