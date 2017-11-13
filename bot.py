@@ -11,6 +11,7 @@ import telegram
 from flask import Flask, request
 import core
 import logging
+import datetime
 from google.appengine.api import urlfetch
 from google.appengine.ext import ndb
 
@@ -22,39 +23,14 @@ STATUS_AUTH = 0
 
 
 class User(ndb.Model):
-    chat_id = ndb.IntegerProperty()
-    status = ndb.IntegerProperty()
+    status = ndb.IntegerProperty(default=STATUS_PENDING)
+    first_name = ndb.StringPropery()
+    last_name = ndb.StringPropery()
+    admin = ndb.BooleanProperty(default=False)
 
 
-def get_user(chat_id):
-    query = User.query(User.chat_id == chat_id)
-
-    query_list = list(query.fetch())
-
-    if (len(query_list) == 1):
-        # Old user
-        logging.debug("User with chat_id %s found in data store", chat_id)
-        return query_list[0]
-    elif (len(query_list) > 1):
-        # Query error
-        logging.error("Multiple users for chat_id %s", chat_id)
-
-        # Purge
-        for user in query_list:
-            user.key.delete()
-
-        # Create new user
-        user = User(chat_id=chat_id, status=STATUS_PENDING)
-        user.put()
-
-        return user
-    else:
-        # Create new user
-        logging.info("Added new user with chat_id %s to datastore", chat_id)
-        user = User(chat_id=chat_id, status=STATUS_PENDING)
-        user.put()
-
-        return user
+class Ping(ndb.Model):
+    date = ndb.DateTimeProperty()
 
 
 def send_unlock_cmd(lock_host, lock_port, lock_code):
@@ -75,13 +51,24 @@ def send_unlock_cmd(lock_host, lock_port, lock_code):
     return False
 
 
-def handle_bot_msg(chat_id, command):
+def handle_bot_msg(update):
+
+    chat_id = update.message.chat_id
+    command = update.message.text
+    telegram_user = update.message.from_user
 
     logging.debug("Command from %s: %s", chat_id, command)
 
-    user = get_user(chat_id)
+    user = User.get_by_id(telegram_user.id)
+    if not user:
+        logging.info("User %s not found!", telegram_user.id)
+        user = User(id=telegram_user.id,
+                    first_name=telegram_user.first_name,
+                    last_name=telegram_user.last_name)
+        user.put()
 
     if user.status == STATUS_AUTH:
+        # AUTHENTICATED USERS
         if command == '/unlock':
             # Send unlock command
             bot.sendMessage(chat_id, "Unlocking...")
@@ -100,22 +87,39 @@ def handle_bot_msg(chat_id, command):
         else:
             bot.sendMessage(chat_id, "Unknown command!")
 
+    elif user.status == STATUS_AUTH and user.admin:
+        # AUTHENTICATED ADMIN
+        if command == "/list-users":
+            query = User.query()
+            query_list = list(query.fetch())
+
+            for sysuser in query_list:
+                bot.sendMessage(chat_id, user.first_name + " " + user.last_name)
+        elif command == "/status":
+            query = Ping.query()
+            query_list = list(query.fetch())
+
+            for ping in query_list:
+                bot.sendMessage(chat_id, "*id:* " + str(ping.id) + "\n*Last ping:* " + str(ping.date.format()))
+        else:
+            bot.sendMessage(chat_id, "Unknown command!")
+
     elif user.status == STATUS_PENDING:
-        # Logging user
+        # PENDING USERS
         if command == app.config['PASS']:
             # Update user status
             user.status = STATUS_AUTH
             user.put()
 
             # Send response
-            bot.sendMessage(chat_id, "Password correct! Welcome :-)")
+            bot.sendMessage(chat_id, "Password accepted! Welcome :-)")
             logging.info("User %s added!", chat_id)
         else:
             user.key.delete()
             bot.sendMessage(chat_id, "Wrong password!")
 
     else:
-        # Unknown user
+        # UNKNOWN USERS
         if command == "/login":
             # Update user status
             user.status = STATUS_PENDING
@@ -139,12 +143,7 @@ def webhook_handler():
         # retrieve the message in JSON and then transform it to Telegram object
         update = telegram.Update.de_json(request.get_json(force=True), bot)
 
-        chat_id = update.message.chat.id
-
-        # Telegram understands UTF-8, so encode text for unicode compatibility
-        text = update.message.text.encode('utf-8')
-
-        handle_bot_msg(chat_id, text)
+        handle_bot_msg(update)
 
         return RESPONSE_OK
 
@@ -161,6 +160,12 @@ def set_webhook():
 @app.route('/ping', methods=['GET', 'POST'])
 def ping_received():
     # Ping received
+    ping = Ping.get_by_id(1)
+    if not ping:
+        ping = Ping(id=1)
+    ping.date = datetime.date.now()
+    ping.put()
+
     return RESPONSE_OK
 
 
