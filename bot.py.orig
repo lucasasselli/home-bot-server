@@ -17,20 +17,52 @@ from google.appengine.ext import ndb
 # Constants
 RESPONSE_OK = "OK"
 RESPONSE_FAIL = "FAIL"
-STATUS_NEW = 0
+STATUS_AUTH = 0
 STATUS_PENDING = 1
-STATUS_AUTH = 2
+STATUS_NEW = 2
 
 
 class User(ndb.Model):
-    status = ndb.IntegerProperty(default=STATUS_NEW)
+    status = ndb.IntegerProperty(default=STATUS_PENDING)
     first_name = ndb.StringPropery()
     last_name = ndb.StringPropery()
     admin = ndb.BooleanProperty(default=False)
 
+<<<<<<< HEAD
 
 class Ping(ndb.Model):
     date = ndb.DateTimeProperty()
+=======
+def get_user(chat_id):
+    query = User.query(User.chat_id == chat_id)
+
+    query_list = list(query.fetch())
+
+    if (len(query_list) == 1):
+        # Old user
+        logging.debug("User with chat_id %s found in data store", chat_id)
+        return query_list[0]
+    elif (len(query_list) > 1):
+        # Query error
+        logging.error("Multiple users for chat_id %s", chat_id)
+
+        # Purge
+        for user in query_list:
+            user.key.delete()
+
+        # Create new user
+        user = User(chat_id=chat_id, status=STATUS_PENDING)
+        user.put()
+
+        return user
+    else:
+        # Create new user
+        logging.info("Added new user with chat_id %s to datastore", chat_id)
+        user = User(chat_id=chat_id, status=STATUS_NEW)
+        user.put()
+
+        return user
+>>>>>>> 77dec181a693ba1e44a729fb867b958ee9229323
 
 
 def send_unlock_cmd(lock_host, lock_port, lock_code):
@@ -72,9 +104,9 @@ def handle_bot_msg(update):
         if command == '/unlock':
             # Send unlock command
             bot.sendMessage(chat_id, "Unlocking...")
-            send_unlock_cmd(app.config['LOCK_HOST'],
-                            app.config['LOCK_PORT'],
-                            app.config['LOCK_AUTHKEY'])
+            unlock_result = send_unlock_cmd(app.config['LOCK_HOST'],
+                                            app.config['LOCK_PORT'],
+                                            app.config['LOCK_AUTHKEY'])
             # Check result
             # if unlock_result:
             #     bot.sendMessage(chat_id, "Door is unlocked!")
