@@ -4,7 +4,7 @@ import datastore
 from datastore import User, Ping
 
 
-class Command():
+class Command(object):
 
     def __init__(self, bot, update, admin_only=False, status_only=-1):
         # type: (telegram.Bot, telegram.Update, bool, int) -> None
@@ -46,7 +46,7 @@ class ListUsers(Command):
 
     def __init__(self, bot, update):
         # type: (telegram.Bot, telegram.Update)
-        super().__init__(bot, update, True, datastore.STATUS_AUTH)
+        super(ListUsers, self).__init__(bot, update, True, datastore.STATUS_AUTH)
 
     def __cmd_body(self):
         query = User.query()
@@ -60,7 +60,7 @@ class DevStatus(Command):
 
     def __init__(self, bot, update):
         # type: (telegram.Bot, telegram.Update)
-        super().__init__(bot, update, True, datastore.STATUS_AUTH)
+        super(DevStatus, self).__init__(bot, update, True, datastore.STATUS_AUTH)
 
     def __cmd_body(self):
         query = Ping.query()
@@ -77,7 +77,7 @@ class Unlock(Command):
 
     def __init__(self, bot, update):
         # type: (telegram.Bot, telegram.Update)
-        super().__init__(bot, update, False, datastore.STATUS_AUTH)
+        super(Unlock, self).__init__(bot, update, False, datastore.STATUS_AUTH)
 
     def __cmd_body(self):
         self.bot.sendMessage(self.chat_id, "Unlocking...")
@@ -90,7 +90,7 @@ class Login(Command):
 
     def __init__(self, bot, update):
         # type: (telegram.Bot, telegram.Update)
-        super().__init__(bot, update, False, datastore.STATUS_PENDING)
+        super(Login, self).__init__(bot, update, False, datastore.STATUS_PENDING)
 
     def __cmd_body(self):
         # Update user status
@@ -105,7 +105,7 @@ class Logout(Command):
 
     def __init__(self, bot, update):
         # type: (telegram.Bot, telegram.Update)
-        super().__init__(bot, update, False, datastore.STATUS_PENDING)
+        super(Logout, self).__init__(bot, update, False, datastore.STATUS_PENDING)
 
     def __cmd_body(self):
         # Update user status
