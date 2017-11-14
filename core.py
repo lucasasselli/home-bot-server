@@ -1,12 +1,35 @@
 import logging
 import telegram
 import datastore
+
+from google.appengine.api import urlfetch
+
 from datastore import User, Ping
+from setup import app
+
+
+def send_pulse_cmd(lock_host, lock_port, lock_code):
+    # type: (str, str, str) -> bool
+    logging.debug("Sending pulse request to %s %s", lock_host, lock_port)
+    logging.info("Unlocking...")
+    url = "http://" + lock_host + ":" + lock_port + "/unlock?code=" + lock_code
+    try:
+        result = urlfetch.fetch(url)
+        if result.status_code == 200:
+            logging.info("Unlock successful!")
+            return True
+        else:
+            logging.info("Unlock failed!")
+            return False
+    except urlfetch.Error:
+        logging.exception('Caught exception fetching url')
+
+    return False
 
 
 class Command():
 
-    def __init__(self, bot, update, admin_only=False, status_only=-1):
+    def __init__(self, bot, update, admin_only=False, status_only=-1, has_argument=False):
         # type: (telegram.Bot, telegram.Update, bool, int) -> None
         self.bot = bot
         self.update = update
@@ -16,6 +39,7 @@ class Command():
         self.telegram_user = update.message.from_user
         self.admin_only = admin_only
         self.status_only = status_only
+        self.has_argument = has_argument
 
     def __get_user(self):
         # type: () -> User
@@ -40,6 +64,19 @@ class Command():
             self.bot.sendMessage(self.chat_id, "Unknown command!")
         else:
             self.__cmd_body()
+            if self.has_argument:
+                user.pending_cmd = self.cmd_name
+                user.put()
+
+    def __arg_body(self):
+        return None
+
+    def get_argument(self):
+        # Clear pending argument
+        user = self.__get_user()
+        user.pending_cmd = None
+        user.put()
+        self.__arg_body()
 
 
 class ListUsers(Command):
@@ -81,31 +118,38 @@ class Unlock(Command):
 
     def __cmd_body(self):
         self.bot.sendMessage(self.chat_id, "Unlocking...")
-        # send_pulse_cmd(app.config['LOCK_HOST'],
-        #                app.config['LOCK_PORT'],
-        #                app.config['LOCK_AUTHKEY'])
+        send_pulse_cmd(app.config['LOCK_HOST'],
+                       app.config['LOCK_PORT'],
+                       app.config['LOCK_AUTHKEY'])
 
 
 class Login(Command):
 
+    cmd_name = "login"
+
     def __init__(self, bot, update):
         # type: (telegram.Bot, telegram.Update)
-        super().__init__(bot, update, False, datastore.STATUS_PENDING)
+        super().__init__(bot, update, False, datastore.STATUS_NEW, True)
 
     def __cmd_body(self):
         # Update user status
-        user = self.__get_user()
-        user.status = datastore.STATUS_PENDING
-        user.put()
+        self.bot.sendMessage(self.chat_id, "Please enter the password...")
 
-        self.bot.sendMessage(self.chat_id, "Please enter the password.")
+    def __arg_body(self):
+        if self.update.message.text == app.config['PASS']:
+            user = self.__get_user()
+            user.status = datastore.STATUS_AUTH
+            user.put()
+            self.bot.sendMessage(self.chat_id, "Welcome %s %s!", user.first_name, user.last_name)
+        else:
+            self.bot.sendMessage(self.chat_id, "Wrong password")
 
 
 class Logout(Command):
 
     def __init__(self, bot, update):
         # type: (telegram.Bot, telegram.Update)
-        super().__init__(bot, update, False, datastore.STATUS_PENDING)
+        super().__init__(bot, update, False, datastore.STATUS_AUTH)
 
     def __cmd_body(self):
         # Update user status
@@ -116,8 +160,8 @@ class Logout(Command):
 
 
 cmd_classes = {
-    'dev-status': DevStatus,
-    'list-users': ListUsers,
+    'devstatus': DevStatus,
+    'listusers': ListUsers,
     'login': Login,
     'logout': Logout,
     'unlock': Unlock

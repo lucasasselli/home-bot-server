@@ -1,44 +1,22 @@
 #!/usr/bin/env python
-from flask import Flask, request
+import setup
+from setup import app, bot
 
-from google.appengine.api import urlfetch
+from flask import request
 
 import telegram
 import logging
 import datetime
 
 import core
-from datastore import Ping
+from datastore import User, Ping
 
 # Constants
 RESPONSE_OK = "OK"
 RESPONSE_FAIL = "FAIL"
 
-
-def send_pulse_cmd(lock_host, lock_port, lock_code):
-    # type: (str, str, str) -> bool
-    logging.debug("Sending pulse request to %s %s", lock_host, lock_port)
-    logging.info("Unlocking...")
-    url = "http://" + lock_host + ":" + lock_port + "/unlock?code=" + lock_code
-    try:
-        result = urlfetch.fetch(url)
-        if result.status_code == 200:
-            logging.info("Unlock successful!")
-            return True
-        else:
-            logging.info("Unlock failed!")
-            return False
-    except urlfetch.Error:
-        logging.exception('Caught exception fetching url')
-
-    return False
-
-
-app = Flask(__name__)
-app.config.from_pyfile('bot.cfg', silent=True)
-
-global bot
-bot = telegram.Bot(token=app.config['BOT_TOKEN'])
+# Initialize Flask and Bot
+setup.init()
 
 
 @app.route(app.config['BOT_HOOK'], methods=['POST'])
@@ -47,6 +25,15 @@ def webhook_handler():
         # retrieve the message in JSON and then transform it to Telegram object
         update = telegram.Update.de_json(request.get_json(force=True), bot)
         text = update.message.text
+        user_id = update.message.from_user.id
+
+        user = User.get_from_id(user_id)
+        if user and user.pending_cmd:
+            command = user.pending_cmd
+
+            if command in core.cmd_classes:
+                command_handler = core.cmd_classes[command](bot, update)
+                command_handler.get_argument()
 
         if text[0] == "/":
             # Command received
