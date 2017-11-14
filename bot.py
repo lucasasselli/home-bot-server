@@ -37,7 +37,7 @@ def webhook_handler():
 
         if text[0] == "/":
             # Command received
-            command = text[1:-1]
+            command = text[1:]
 
             logging.info("Command %s received from user %s", command, update.message.from_user.id)
 
