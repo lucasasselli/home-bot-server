@@ -5,7 +5,7 @@ import datastore
 from google.appengine.api import urlfetch
 
 from datastore import User, Ping
-from setup import app
+import setup
 
 
 def send_pulse_cmd(lock_host, lock_port, lock_code):
@@ -118,9 +118,9 @@ class Unlock(Command):
 
     def __cmd_body(self):
         self.bot.sendMessage(self.chat_id, "Unlocking...")
-        send_pulse_cmd(app.config['LOCK_HOST'],
-                       app.config['LOCK_PORT'],
-                       app.config['LOCK_AUTHKEY'])
+        send_pulse_cmd(setup.app.config['LOCK_HOST'],
+                       setup.app.config['LOCK_PORT'],
+                       setup.app.config['LOCK_AUTHKEY'])
 
 
 class Login(Command):
@@ -136,7 +136,7 @@ class Login(Command):
         self.bot.sendMessage(self.chat_id, "Please enter the password...")
 
     def __arg_body(self):
-        if self.update.message.text == app.config['PASS']:
+        if self.update.message.text == setup.app.config['PASS']:
             user = self.__get_user()
             user.status = datastore.STATUS_AUTH
             user.put()

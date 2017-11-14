@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import setup
-from setup import app, bot
 
 from flask import request
 
@@ -19,7 +18,7 @@ RESPONSE_FAIL = "FAIL"
 setup.init()
 
 
-@app.route(app.config['BOT_HOOK'], methods=['POST'])
+@setup.app.route(setup.app.config['BOT_HOOK'], methods=['POST'])
 def webhook_handler():
     if request.method == "POST":
         # retrieve the message in JSON and then transform it to Telegram object
@@ -48,16 +47,16 @@ def webhook_handler():
         return RESPONSE_OK
 
 
-@app.route('/set_webhook', methods=['GET', 'POST'])
+@setup.app.route('/set_webhook', methods=['GET', 'POST'])
 def set_webhook():
-    s = bot.setWebhook('https://' + app.config['HOST'] + app.config['BOT_HOOK'])
+    s = bot.setWebhook('https://' + setup.app.config['HOST'] + setup.app.config['BOT_HOOK'])
     if s:
         return RESPONSE_OK
     else:
         return RESPONSE_FAIL
 
 
-@app.route('/ping', methods=['GET', 'POST'])
+@setup.app.route('/ping', methods=['GET', 'POST'])
 def ping_received():
     # Ping received
     ping = Ping.get_by_id(1)
@@ -69,6 +68,6 @@ def ping_received():
     return RESPONSE_OK
 
 
-@app.route('/')
+@setup.app.route('/')
 def index():
     return '.'
