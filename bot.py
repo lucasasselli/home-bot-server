@@ -15,7 +15,8 @@ RESPONSE_OK = "OK"
 RESPONSE_FAIL = "FAIL"
 
 
-def send_pulse_cmd(lock_host: str, lock_port: str, lock_code: str) -> bool:
+def send_pulse_cmd(lock_host, lock_port, lock_code):
+    # type: (str, str, str) -> bool
     logging.debug("Sending pulse request to %s %s", lock_host, lock_port)
     logging.info("Unlocking...")
     url = "http://" + lock_host + ":" + lock_port + "/unlock?code=" + lock_code

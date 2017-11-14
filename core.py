@@ -6,7 +6,8 @@ from datastore import User, Ping
 
 class Command():
 
-    def __init__(self, bot: telegram.Bot, update: telegram.Update, admin_only=False, status_only=-1):
+    def __init__(self, bot, update, admin_only=False, status_only=-1):
+        # type: (telegram.Bot, telegram.Update, bool, int) -> None
         self.bot = bot
         self.update = update
 
@@ -16,7 +17,8 @@ class Command():
         self.admin_only = admin_only
         self.status_only = status_only
 
-    def __get_user(self) -> User:
+    def __get_user(self):
+        # type: () -> User
         user = User.get_by_id(self.telegram_user.id)
         if not user:
             logging.info("user %s not found!", self.telegram_user.id)
@@ -42,7 +44,8 @@ class Command():
 
 class ListUsers(Command):
 
-    def __init__(self, bot: telegram.Bot, update: telegram.Update):
+    def __init__(self, bot, update):
+        # type: (telegram.Bot, telegram.Update)
         super().__init__(bot, update, True, datastore.STATUS_AUTH)
 
     def __cmd_body(self):
@@ -55,7 +58,8 @@ class ListUsers(Command):
 
 class DevStatus(Command):
 
-    def __init__(self, bot: telegram.Bot, update: telegram.Update):
+    def __init__(self, bot, update):
+        # type: (telegram.Bot, telegram.Update)
         super().__init__(bot, update, True, datastore.STATUS_AUTH)
 
     def __cmd_body(self):
@@ -71,7 +75,8 @@ class DevStatus(Command):
 
 class Unlock(Command):
 
-    def __init__(self, bot: telegram.Bot, update: telegram.Update):
+    def __init__(self, bot, update):
+        # type: (telegram.Bot, telegram.Update)
         super().__init__(bot, update, False, datastore.STATUS_AUTH)
 
     def __cmd_body(self):
@@ -83,7 +88,8 @@ class Unlock(Command):
 
 class Login(Command):
 
-    def __init__(self, bot: telegram.Bot, update: telegram.Update):
+    def __init__(self, bot, update):
+        # type: (telegram.Bot, telegram.Update)
         super().__init__(bot, update, False, datastore.STATUS_PENDING)
 
     def __cmd_body(self):
@@ -97,7 +103,8 @@ class Login(Command):
 
 class Logout(Command):
 
-    def __init__(self, bot: telegram.Bot, update: telegram.Update):
+    def __init__(self, bot, update):
+        # type: (telegram.Bot, telegram.Update)
         super().__init__(bot, update, False, datastore.STATUS_PENDING)
 
     def __cmd_body(self):
