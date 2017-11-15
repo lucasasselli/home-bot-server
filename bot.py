@@ -15,9 +15,6 @@ from datastore import User, Ping
 RESPONSE_OK = "OK"
 RESPONSE_FAIL = "FAIL"
 
-# Initialize Flask and Bot
-setup.init()
-
 
 @app.route(app.config['BOT_HOOK'], methods=['POST'])
 def webhook_handler():
@@ -26,8 +23,9 @@ def webhook_handler():
         update = telegram.Update.de_json(request.get_json(force=True), bot)
         text = update.message.text
         user_id = update.message.from_user.id
+        chat_id = update.message.chat_id
 
-        user = User.get_from_id(user_id)
+        user = User.get_by_id(user_id)
         if user and user.pending_cmd:
             command = user.pending_cmd
 
@@ -35,7 +33,7 @@ def webhook_handler():
                 command_handler = core.cmd_classes[command](bot, update)
                 command_handler.get_argument()
 
-        if text[0] == "/":
+        elif text[0] == "/":
             # Command received
             command = text[1:]
 
@@ -43,7 +41,10 @@ def webhook_handler():
 
             if command in core.cmd_classes:
                 command_handler = core.cmd_classes[command](bot, update)
+                logging.debug("Command %s matched to %s", command, command_handler)
                 command_handler.run()
+            else:
+                bot.sendMessage(chat_id, "Command not found!")
 
         return RESPONSE_OK
 

@@ -41,7 +41,7 @@ class Command(object):
         self.status_only = status_only
         self.has_argument = has_argument
 
-    def __get_user(self):
+    def _get_user(self):
         # type: () -> User
         user = User.get_by_id(self.telegram_user.id)
         if not user:
@@ -53,30 +53,32 @@ class Command(object):
 
         return user
 
-    def __cmd_body(self):
-        return None
+    def cmd_body(self):
+        pass
 
     def run(self):
-        user = self.__get_user()
+        logging.debug("Running command...")
+        user = self._get_user()
         if self.admin_only and not user.admin:
             self.bot.sendMessage(self.chat_id, "You must be admin to run this command!")
         elif self.status_only > 0 and not user.status == self.status_only:
             self.bot.sendMessage(self.chat_id, "Unknown command!")
         else:
-            self.__cmd_body()
+            self.cmd_body()
             if self.has_argument:
                 user.pending_cmd = self.cmd_name
                 user.put()
 
-    def __arg_body(self):
-        return None
+    def arg_body(self):
+        pass
 
     def get_argument(self):
+        logging.debug("Getting argument...")
         # Clear pending argument
-        user = self.__get_user()
+        user = self._get_user()
         user.pending_cmd = None
         user.put()
-        self.__arg_body()
+        self.arg_body()
 
 
 class ListUsers(Command):
@@ -85,12 +87,20 @@ class ListUsers(Command):
         # type: (telegram.Bot, telegram.Update)
         super(ListUsers, self).__init__(bot, update, True, datastore.STATUS_AUTH)
 
-    def __cmd_body(self):
+    def cmd_body(self):
         query = User.query()
         query_list = list(query.fetch())
 
         for user in query_list:
-            self.bot.sendMessage(self.chat_id, user.first_name + " " + user.last_name)
+            user_name = ""
+            if user.first_name:
+                user_name += user.first_name + " "
+            if user.last_name:
+                user_name += user.last_name + " "
+            if user_name == "":
+                user_name = self.update.message.from_user.id
+
+            self.bot.sendMessage(self.chat_id, user_name + str(user.status))
 
 
 class DevStatus(Command):
@@ -99,7 +109,7 @@ class DevStatus(Command):
         # type: (telegram.Bot, telegram.Update)
         super(DevStatus, self).__init__(bot, update, True, datastore.STATUS_AUTH)
 
-    def __cmd_body(self):
+    def cmd_body(self):
         query = Ping.query()
         query_list = list(query.fetch())
 
@@ -116,7 +126,7 @@ class Unlock(Command):
         # type: (telegram.Bot, telegram.Update)
         super(Unlock, self).__init__(bot, update, False, datastore.STATUS_AUTH)
 
-    def __cmd_body(self):
+    def cmd_body(self):
         self.bot.sendMessage(self.chat_id, "Unlocking...")
         send_pulse_cmd(app.config['LOCK_HOST'],
                        app.config['LOCK_PORT'],
@@ -131,16 +141,16 @@ class Login(Command):
         # type: (telegram.Bot, telegram.Update)
         super(Login, self).__init__(bot, update, False, datastore.STATUS_NEW, True)
 
-    def __cmd_body(self):
+    def cmd_body(self):
         # Update user status
         self.bot.sendMessage(self.chat_id, "Please enter the password...")
 
-    def __arg_body(self):
+    def arg_body(self):
         if self.update.message.text == app.config['PASS']:
-            user = self.__get_user()
+            user = self._get_user()
             user.status = datastore.STATUS_AUTH
             user.put()
-            self.bot.sendMessage(self.chat_id, "Welcome %s %s!", user.first_name, user.last_name)
+            self.bot.sendMessage(self.chat_id, "Welcome!")
         else:
             self.bot.sendMessage(self.chat_id, "Wrong password")
 
@@ -151,9 +161,9 @@ class Logout(Command):
         # type: (telegram.Bot, telegram.Update)
         super(Logout, self).__init__(bot, update, False, datastore.STATUS_AUTH)
 
-    def __cmd_body(self):
+    def cmd_body(self):
         # Update user status
-        user = self.__get_user()
+        user = self._get_user()
         user.key.delete()
 
         self.bot.sendMessage(self.chat_id, "See you soon! :-)")

@@ -1,7 +1,7 @@
 from google.appengine.ext import ndb
 
 STATUS_NEW = 0
-STATUS_PENDING = 1
+STATUS_BANNED = 1
 STATUS_AUTH = 2
 
 
